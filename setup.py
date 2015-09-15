@@ -1,9 +1,19 @@
+#  -*- coding: utf-8 -*-
 from setuptools import setup, find_packages
 
 requires = ['future']
 
-desc = ('A lightweight python package to simplify the communication with '
-        'several scientific instruments.')
+try:
+    import numpy
+except ImportError:
+    requires.append('numpy')
+
+try:
+    import scipy
+except ImportError:
+    requires.append('scipy')
+
+desc = 'A small python package for heat capacity measurements and analysis.'
 
 setup(
     name='heatcapacity',
@@ -13,7 +23,7 @@ setup(
     license = 'BSD',
     url='https://github.com/p3trus/heatcapacity',
     description=desc,
-    long_description=open('README.md').read(),
+    long_description=open('README.rst').read(),
     packages=find_packages(),
     include_package_data=True,
     install_requires=requires,
