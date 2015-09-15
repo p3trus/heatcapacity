@@ -6,7 +6,7 @@ from future.builtins import *
 from scipy import interpolate, linalg, signal
 
 
-class FirstOrder(signal.TransferFunction):
+class FirstOrder(signal.lti):
     """First order heat capacity differential equation model.
 
     The first oder heat capacity differential equation is
