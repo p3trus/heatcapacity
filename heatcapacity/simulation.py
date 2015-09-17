@@ -5,6 +5,7 @@ from future.builtins import *
 import time
 
 import numpy as np
+from scipy import signal
 
 from heatcapacity.fit import FirstOrder
 
@@ -37,13 +38,14 @@ class Simulation(object):
         measurement.start()
 
     """
-    def __init__(self, model, heater_resistance, noise_level):
+    def __init__(self, model, heater_resistance, noise_level, x0=0.):
         self.model = model
         self.heater_resistance = heater_resistance
         self.noise_level = noise_level
+        self.x0 = x0
 
         self.current = 0.
-        self.state = None
+        self._state = None
 
     @property
     def voltage(self):
@@ -52,8 +54,18 @@ class Simulation(object):
     @property
     def temperature(self):
         """Simulates the temperature response to the current change."""
-        t = time.time()
-        tout, yout, xout = self.model.output([self.voltage * self.current], [t], self.state)
-        self.state = xout
-        assert yout.size == 1
-        return yout.item() + np.random.standard_normal() * self.noise_level
+        if self._state is None:
+            u = self.voltage * self.current
+            t = time.time() - 1
+            self._state = u, t, self.x0
+        u0, t0, x0 = self._state
+
+        tin = [t0, time.time()]
+        uin = [u0, self.voltage * self.current]
+
+        tout, yout, xout = signal.lsim2(self.model, uin, tin, x0)
+
+        # Update state
+        self._state = uin[-1], tout[-1], xout[-2]
+
+        return yout[-1]
