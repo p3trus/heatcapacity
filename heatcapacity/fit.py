@@ -48,11 +48,11 @@ class FirstOrder(signal.TransferFunction):
 
     @property
     def heat_capacity(self):
-        return 1. / self.num[1]
+        return 1. / self.num[-1]
 
     @property
     def thermal_conductivity(self):
-        return self.den[1] / self.num[1]
+        return self.den[1] * self.heat_capacity
 
     @classmethod
     def fit(cls, t, y, u):
@@ -72,7 +72,7 @@ class FirstOrder(signal.TransferFunction):
         ui = uspline(ti)
         result = linalg.lstsq(np.hstack((yi[:,None], ui[:, None])) , dyi)[0]
 
-        b = np.r_[0., result[1]]
+        b = np.r_[result[1]]
         a = np.r_[1., - result[0]]
 
         return cls(b, a)
