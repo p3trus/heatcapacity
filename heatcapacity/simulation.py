@@ -15,7 +15,7 @@ class Simulation(object):
         import heatcapacity as hc
 
         sim = hc.Simulation(
-            hc.FirstOrder.from_ck(0.4, 0.001),
+            hc.FirstOrder.from_ck(0.005, 0.002),
             heater_resistance=1e3,
             temperature_noise=0.1
         )
