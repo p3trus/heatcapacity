@@ -56,4 +56,4 @@ class Simulation(object):
         tout, yout, xout = self.model.output([self.voltage * self.current], [t], self.state)
         self.state = xout
         assert yout.size == 1
-        return yout.item() + np.random.standart_normal() * self.noise_level
+        return yout.item() + np.random.standard_normal() * self.noise_level
