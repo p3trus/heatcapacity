@@ -44,7 +44,7 @@ class Simulation(object):
 
     @property
     def voltage(self):
-        return self.heater_resistance * self.voltage
+        return self.heater_resistance * self.current
 
     @property
     def temperature(self):
