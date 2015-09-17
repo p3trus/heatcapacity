@@ -7,7 +7,7 @@ import numpy as np
 from scipy import interpolate, linalg, signal
 
 
-class FirstOrder(signal.lti):
+class FirstOrder(signal.TransferFunction):
     """First order heat capacity differential equation model.
 
     The first oder heat capacity differential equation is
