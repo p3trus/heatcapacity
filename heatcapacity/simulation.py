@@ -52,5 +52,5 @@ class Simulation(object):
         t = time.time()
         tout, yout, xout = self.model.output([self.voltage * self.current], [t], self.state)
         self.state = xout
-        assert len(yout) == 1
-        return yout[0] + np.random.standart_normal() * self.noise_level
+        assert yout.size == 1
+        return yout.item() + np.random.standart_normal() * self.noise_level
