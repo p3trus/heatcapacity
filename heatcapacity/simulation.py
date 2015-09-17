@@ -36,13 +36,15 @@ class Simulation(object):
     """
     def __init__(self, model, heater_resistance, noise_level):
         self.model = model
-        self.current = 0.
-        self.xout = None
+        self.heater_resistance = heater_resistance
         self.noise_level = noise_level
+
+        self.current = 0.
+        self.state = None
 
     @property
     def voltage(self):
-        return self.resistance * self.voltage
+        return self.heater_resistance * self.voltage
 
     @property
     def temperature(self):
