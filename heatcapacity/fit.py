@@ -40,7 +40,7 @@ class FirstOrder(signal.lti):
         super(FirstOrder, self).__init__(b, a)
 
     @classmethod
-    def from_ck(self, heat_capacity, thermal_conductivity):
+    def from_ck(cls, heat_capacity, thermal_conductivity):
         b = [0., 1. / heat_capacity]
         a = [1., thermal_conductivity / heat_capacity]
         return cls(b, a)
