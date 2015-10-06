@@ -7,17 +7,15 @@ import time
 import numpy as np
 from scipy import signal
 
-from heatcapacity.fit import FirstOrder
-
-
 class Simulation(object):
     """The Simulation object can be used if a real experiment is not available.
 
     :param model: An lti model used to simulate the temperature output.
     :param heater_resistance: A resistance in ohm used to calculate the voltage
         drop.
-    :param noise_level: A sample taken from the standard normal distribution
-        scaled by the `noise_level` is added to the simulated temperature output.
+    :param noise_scale: A sample taken from the standard normal distribution
+        scaled by the `noise_scale` is added to the simulated temperature output.
+    
 
     E.g.::
 
@@ -26,7 +24,7 @@ class Simulation(object):
         sim = hc.Simulation(
             hc.FirstOrder.from_ck(0.005, 0.002),
             heater_resistance=1e3,
-            temperature_noise=0.1
+            noise_scale=0.1
         )
         sampling_time = 0.1
         pulse_sequence = [0.] * 60 * sampling_time + [1.] * 60 * sampling_time
@@ -38,10 +36,12 @@ class Simulation(object):
         measurement.start()
 
     """
-    def __init__(self, model, heater_resistance, noise_level, x0=0.):
-        self.model = model
+    def __init__(self, model, heater_resistance, noise_scale, sampling_time, x0=0.):
+        # convert model to discrete statespace representation
+        self.model = signal.cont2discrete(signal.tf2ss(model.num, model.den), sampling_time)
+
         self.heater_resistance = heater_resistance
-        self.noise_level = noise_level
+        self.noise_scale = noise_scale
         self.x0 = x0
 
         self.current = 0.
@@ -56,16 +56,12 @@ class Simulation(object):
         """Simulates the temperature response to the current change."""
         if self._state is None:
             u = self.voltage * self.current
-            t = time.time() - 1
-            self._state = u, t, self.x0
-        u0, t0, x0 = self._state
-
-        tin = [t0, time.time()]
+            self._state = u, self.x0
+        u0, x0 = self._state
         uin = [u0, self.voltage * self.current]
-
-        tout, yout, xout = signal.lsim2(self.model, uin, tin, x0)
+        tout, yout, xout = signal.dlsim(self.model, uin, x0=x0)
 
         # Update state
-        self._state = uin[-1], tout[-1], xout[-2]
+        self._state = uin[-1], xout[-1]
 
-        return yout[-1]
+        return yout[-1] + np.random.normal(scale=self.noise_scale)
