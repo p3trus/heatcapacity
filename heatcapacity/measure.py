@@ -3,6 +3,9 @@ from __future__ import (absolute_import, division,
                         print_function, unicode_literals)
 from future.builtins import *
 import time
+import contextlib
+
+import numpy as np
 
 
 class Measurement(object):
@@ -79,11 +82,89 @@ class PulseMeasurement(Measurement):
         """Starts the heat capacity measurement."""
         data = []
         for current in self.pulse:
-            start = time.time()
-            self.currentsource.current = current
-            data.append(self.measure)
-            while (time.time() - start) < self.sampling_time:
-                time.sleep(self.sampling_time / 100.)
+            with sampling(self.sampling_time):
+                self.currentsource.current = current
+                data.append(self.measure)
+
         timestamp, power, temperature = zip(*data)
         return timestamp, power, temperature
 
+
+class AdaptiveStep(Measurement):
+    def __init__(self, currentsource, powermeter, thermometer, duration, max_current, min_current=0., window=None, sampling=0.1):
+        super(AdaptiveStep, self).__init__(currentsource, powermeter, thermometer)
+        self.duration = duration
+        self.max_current = max_current
+        self.min_current = min_current
+        self.sampling = sampling
+        self.deriv_threshold = 1
+        
+        if window is None:
+            window = duration / sampling / 5
+            self.window = window + 1 if window % 2 == 0 else window
+        else:
+            self.window = window
+            
+        self.order = 2
+        
+    def start(self, verbose=False):
+        data = []
+        derivative = []
+
+        input = audiolazy.ControlStream(0.)
+        deriv_filt = savitzky_golay(self.window, self.order, deriv=1., sampling=self.sampling)(input)
+        
+        # measure steady state
+        start = time.time()
+        self.currentsource.current = self.min_current
+        while time.time() - start < self.duration:
+            with sampling(self.sampling):
+                timestamp, power, temperature = self.measure()
+                data.append((timestamp, power, temperature))
+                # Update derivative filter
+                input.value = temperature / power if power else temperature
+                derivative.append(deriv_filt.take())
+        
+        #measure response to heat pulse
+        start = time.time()
+        self.currentsource.current = self.max_current
+        while (time.time() - start < self.duration) or (np.abs(derivative[-1]) > self.deriv_threshold):
+            with sampling(self.sampling):
+                timestamp, power, temperature = self.measure()
+                data.append((timestamp, power, temperature))
+                # Update derivative filter
+                input.value = temperature / power if power else temperature
+                derivative.append(deriv_filt.take())
+                
+        #measure decay for the same time
+        duration = time.time() - start
+        start = time.time()
+        self.currentsource.current = self.min_current
+        while time.time() - start < duration:
+            with sampling(self.sampling):
+                timestamp, power, temperature = self.measure()
+                data.append((timestamp, power, temperature))
+                # Update derivative filter
+                input.value = temperature / power if power else temperature
+                derivative.append(deriv_filt.take())
+
+        timestamp, power, temperature = zip(*data)
+        if verbose:
+            return timestamp, power, temperature, derivative
+        return timestamp, power, temperature
+
+
+import audiolazy
+from scipy import signal
+
+def savitzky_golay(window, order, deriv=1, sampling=1.):
+    return audiolazy.ZFilter(numerator=signal.savgol_coeffs(window, order, deriv=deriv, delta=sampling, use='conv').tolist())
+
+@contextlib.contextmanager
+def sampling(step, sleep_ratio=0.01):
+    assert step > 0
+    
+    start = time.time()
+    yield
+    while (time.time() - start) < step:
+        time.sleep(step * sleep_ratio)
